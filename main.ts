@@ -33,6 +33,14 @@ function sma120(): bigint | null {
   return sum / BigInt(SMA_BARS);
 }
 
+function buyFullCash(state: BarsState) {
+  const { caps, fees } = state.hello;
+  const byWeight = (BigInt(caps.max_weight_bps) * state.equity) / 10000n;
+  const slice = state.cash < byWeight ? state.cash : byWeight;
+  if (slice === 0n || slice < BigInt(fees.min_notional_quote_units)) return [];
+  return [{ side: 'buy', symbol: 'CBBTC', notional_quote_units: slice, max_slippage_bps: MAX_SLIPPAGE_BPS }];
+}
+
 await runBars({
   onBatch(state: BarsState) {
     if (state.warmingUp) return [];
@@ -64,11 +72,7 @@ await runBars({
       peak = close;
       trough = null;
       exitPeak = null;
-      const { caps, fees } = state.hello;
-      const byWeight = (BigInt(caps.max_weight_bps) * state.equity) / 10000n;
-      const slice = state.cash < byWeight ? state.cash : byWeight;
-      if (slice === 0n || slice < BigInt(fees.min_notional_quote_units)) return [];
-      return [{ side: 'buy', symbol: 'CBBTC', notional_quote_units: slice, max_slippage_bps: MAX_SLIPPAGE_BPS }];
+      return buyFullCash(state);
     }
 
     // Re-entry after a stop-out.
@@ -80,11 +84,7 @@ await runBars({
       peak = close;
       trough = null;
       exitPeak = null;
-      const { caps, fees } = state.hello;
-      const byWeight = (BigInt(caps.max_weight_bps) * state.equity) / 10000n;
-      const slice = state.cash < byWeight ? state.cash : byWeight;
-      if (slice === 0n || slice < BigInt(fees.min_notional_quote_units)) return [];
-      return [{ side: 'buy', symbol: 'CBBTC', notional_quote_units: slice, max_slippage_bps: MAX_SLIPPAGE_BPS }];
+      return buyFullCash(state);
     }
     return [];
   },
